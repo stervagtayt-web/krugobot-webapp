@@ -14,27 +14,18 @@ const state = {
 // Инициализация
 async function init() {
     try {
-        // Получаем данные пользователя из Telegram
         const initData = tg.initDataUnsafe || {};
         state.user = initData.user || { id: 'unknown', first_name: 'Гость' };
         
-        // Проверяем админа (ID должны быть в ADMIN_IDS бота)
         const ADMIN_IDS = [1207482858, 577985223];
         state.isAdmin = ADMIN_IDS.includes(state.user.id);
 
-        // Показываем админ-кнопку если надо
         if (state.isAdmin) {
             document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
         }
 
-        // Приветствие
-        document.getElementById('user-greeting').textContent = 
-            `Привет, ${state.user.first_name}!`;
-
-        // Применяем тему
+        document.getElementById('user-greeting').textContent = `Привет, ${state.user.first_name}!`;
         applyTheme();
-
-        // Переключаем на главный экран
         showScreen('main');
     } catch (e) {
         console.error('Init error:', e);
@@ -42,59 +33,67 @@ async function init() {
     }
 }
 
-// Тема Telegram
 function applyTheme() {
-    const theme = {
-        bg: tg.themeParams.bg_color || '#1a1a2e',
-        text: tg.themeParams.text_color || '#ffffff',
-        hint: tg.themeParams.hint_color || '#888',
-        button: tg.themeParams.button_color || '#4a90e2',
-        buttonText: tg.themeParams.button_text_color || '#ffffff',
-        secondaryBg: tg.themeParams.secondary_bg_color || '#2a2a4a'
-    };
-    
-    document.body.style.backgroundColor = theme.bg;
-    document.body.style.color = theme.text;
+    document.body.style.backgroundColor = tg.themeParams.bg_color || '#1a1a2e';
+    document.body.style.color = tg.themeParams.text_color || '#ffffff';
 }
 
-// Навигация между экранами
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(`${screenId}-screen`).classList.add('active');
     
-    // Специальные действия при открытии экрана
     if (screenId === 'watch') loadVideos();
     if (screenId === 'profile') loadProfile();
 }
 
-// Загрузка видео (заглушка — замени на реальный API)
+// Загрузка видео через бота
 async function loadVideos() {
-    // Здесь должен быть запрос к твоему API или команда боту
-    // Пока моковые данные
-    state.videos = [
-        { id: 1, url: 'https://example.com/video1.mp4', isReply: false },
-        { id: 2, url: 'https://example.com/video2.mp4', isReply: true }
-    ];
-    state.currentIndex = 0;
-    playCurrentVideo();
+    try {
+        // Показываем загрузку
+        document.getElementById('current-video').style.display = 'none';
+        
+        // Отправляем запрос боту
+        tg.sendData(JSON.stringify({ action: 'get_videos' }));
+        
+        // Ждём ответ (будет обработан в main_button или через callback)
+        tg.showPopup({ message: '📥 Загрузка кружков...' });
+        
+        // Заглушка пока нет ответа
+        setTimeout(() => {
+            tg.showPopup({ message: 'Нажмите "Обновить" в чате с ботом' });
+        }, 1000);
+        
+    } catch (e) {
+        console.error('Ошибка загрузки:', e);
+        tg.showPopup({ message: '❌ Ошибка загрузки' });
+    }
 }
 
+// Воспроизведение текущего видео
 function playCurrentVideo() {
     const video = state.videos[state.currentIndex];
     if (!video) return;
     
     state.currentVideo = video;
     const videoEl = document.getElementById('current-video');
-    videoEl.src = video.url;
-    videoEl.play();
     
+    // В Mini App нельзя напрямую использовать file_id
+    // Нужно открывать видео через Telegram
     document.getElementById('video-badge').textContent = 
         video.isReply ? '📬 Вам ответили!' : '🎲 Случайный кружок';
+    
+    videoEl.style.display = 'block';
+    
+    // Показываем заглушку
+    videoEl.poster = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'360\' height=\'640\'%3E%3Crect width=\'360\' height=\'640\' fill=\'%231a1a2e\'/%3E%3Ctext x=\'180\' y=\'320\' fill=\'white\' text-anchor=\'middle\'%3E🎥 Кружок #' + video.id + '%3C/text%3E%3C/svg%3E';
 }
 
 // Действия с видео
 async function handleVideoAction(action) {
-    if (!state.currentVideo) return;
+    if (!state.currentVideo) {
+        tg.showPopup({ message: '❌ Нет активного видео' });
+        return;
+    }
     
     const videoId = state.currentVideo.id;
     
@@ -103,11 +102,14 @@ async function handleVideoAction(action) {
             tg.sendData(JSON.stringify({ action: 'like', video_id: videoId }));
             tg.showPopup({ title: '❤️', message: 'Лайк отправлен!' });
             break;
+            
         case 'reply':
             tg.sendData(JSON.stringify({ action: 'reply', video_id: videoId }));
-            tg.openTelegramLink(`https://t.me/${tg.initDataUnsafe.user?.username || ''}`);
+            tg.showPopup({ message: '🎥 Отправьте кружок в боте для ответа' });
             break;
+            
         case 'next':
+            tg.sendData(JSON.stringify({ action: 'next', video_id: videoId }));
             state.currentIndex++;
             if (state.currentIndex < state.videos.length) {
                 playCurrentVideo();
@@ -116,21 +118,25 @@ async function handleVideoAction(action) {
                 showScreen('main');
             }
             break;
+            
         case 'report':
             tg.sendData(JSON.stringify({ action: 'report', video_id: videoId }));
             tg.showPopup({ title: '🚨', message: 'Жалоба отправлена' });
             state.currentIndex++;
-            playCurrentVideo();
+            if (state.currentIndex < state.videos.length) {
+                playCurrentVideo();
+            } else {
+                showScreen('main');
+            }
             break;
     }
 }
 
 // Профиль
 async function loadProfile() {
-    // Заглушка — замени на реальные данные
-    document.getElementById('stat-sent').textContent = '12';
-    document.getElementById('stat-likes').textContent = '34';
-    document.getElementById('stat-mutual').textContent = '5';
+    document.getElementById('stat-sent').textContent = '—';
+    document.getElementById('stat-likes').textContent = '—';
+    document.getElementById('stat-mutual').textContent = '—';
 }
 
 // Админ действия
@@ -140,20 +146,30 @@ async function handleAdminAction(action) {
     switch(action) {
         case 'stats':
             tg.sendData(JSON.stringify({ action: 'admin_stats' }));
-            resultDiv.textContent = 'Запрос отправлен...';
+            resultDiv.textContent = '📊 Запрос отправлен в бот';
             break;
+            
         case 'ban':
             const banId = prompt('Введите ID пользователя:');
             if (banId) {
-                tg.sendData(JSON.stringify({ action: 'admin_ban', user_id: banId }));
-                resultDiv.textContent = `Бан ${banId}`;
+                tg.sendData(JSON.stringify({ action: 'admin_ban', user_id: parseInt(banId) }));
+                resultDiv.textContent = `🚫 Бан ${banId}`;
             }
             break;
+            
+        case 'unban':
+            const unbanId = prompt('Введите ID пользователя:');
+            if (unbanId) {
+                tg.sendData(JSON.stringify({ action: 'admin_unban', user_id: parseInt(unbanId) }));
+                resultDiv.textContent = `✅ Разбан ${unbanId}`;
+            }
+            break;
+            
         case 'broadcast':
             const msg = prompt('Текст рассылки:');
             if (msg) {
                 tg.sendData(JSON.stringify({ action: 'admin_broadcast', text: msg }));
-                resultDiv.textContent = 'Рассылка запущена';
+                resultDiv.textContent = '📢 Рассылка запущена';
             }
             break;
     }
@@ -161,12 +177,10 @@ async function handleAdminAction(action) {
 
 // Обработчики событий
 document.addEventListener('click', e => {
-    // Навигация
     if (e.target.dataset.screen) {
         showScreen(e.target.dataset.screen);
     }
     
-    // Главное меню
     if (e.target.dataset.action) {
         const action = e.target.dataset.action;
         if (action === 'watch') showScreen('watch');
@@ -176,16 +190,14 @@ document.addEventListener('click', e => {
         if (action === 'support') tg.openTelegramLink('https://t.me/krugobot_news?direct');
         if (action === 'my-videos') {
             tg.sendData(JSON.stringify({ action: 'my_videos' }));
-            tg.showPopup({ message: 'Управление в боте' });
+            tg.showPopup({ message: '📋 Список в чате с ботом' });
         }
     }
     
-    // Видео действия
     if (e.target.dataset.videoAction) {
         handleVideoAction(e.target.dataset.videoAction);
     }
     
-    // Админ действия
     if (e.target.dataset.adminAction) {
         handleAdminAction(e.target.dataset.adminAction);
     }

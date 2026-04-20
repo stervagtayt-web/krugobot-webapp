@@ -2,7 +2,6 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
-// Состояние приложения
 const state = {
     user: null,
     isAdmin: false,
@@ -11,7 +10,6 @@ const state = {
     currentIndex: 0
 };
 
-// Инициализация
 async function init() {
     try {
         const initData = tg.initDataUnsafe || {};
@@ -46,30 +44,16 @@ function showScreen(screenId) {
     if (screenId === 'profile') loadProfile();
 }
 
-// Загрузка видео через бота
 async function loadVideos() {
     try {
-        // Показываем загрузку
-        document.getElementById('current-video').style.display = 'none';
-        
-        // Отправляем запрос боту
+        tg.showPopup({ message: '📥 Запрос кружков...\nПроверьте чат с ботом!' });
         tg.sendData(JSON.stringify({ action: 'get_videos' }));
-        
-        // Ждём ответ (будет обработан в main_button или через callback)
-        tg.showPopup({ message: '📥 Загрузка кружков...' });
-        
-        // Заглушка пока нет ответа
-        setTimeout(() => {
-            tg.showPopup({ message: 'Нажмите "Обновить" в чате с ботом' });
-        }, 1000);
-        
     } catch (e) {
         console.error('Ошибка загрузки:', e);
         tg.showPopup({ message: '❌ Ошибка загрузки' });
     }
 }
 
-// Воспроизведение текущего видео
 function playCurrentVideo() {
     const video = state.videos[state.currentIndex];
     if (!video) return;
@@ -77,18 +61,14 @@ function playCurrentVideo() {
     state.currentVideo = video;
     const videoEl = document.getElementById('current-video');
     
-    // В Mini App нельзя напрямую использовать file_id
-    // Нужно открывать видео через Telegram
+    videoEl.src = video.url;
+    videoEl.style.display = 'block';
+    videoEl.play().catch(e => console.log('Автовоспроизведение заблокировано'));
+    
     document.getElementById('video-badge').textContent = 
         video.isReply ? '📬 Вам ответили!' : '🎲 Случайный кружок';
-    
-    videoEl.style.display = 'block';
-    
-    // Показываем заглушку
-    videoEl.poster = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'360\' height=\'640\'%3E%3Crect width=\'360\' height=\'640\' fill=\'%231a1a2e\'/%3E%3Ctext x=\'180\' y=\'320\' fill=\'white\' text-anchor=\'middle\'%3E🎥 Кружок #' + video.id + '%3C/text%3E%3C/svg%3E';
 }
 
-// Действия с видео
 async function handleVideoAction(action) {
     if (!state.currentVideo) {
         tg.showPopup({ message: '❌ Нет активного видео' });
@@ -132,14 +112,12 @@ async function handleVideoAction(action) {
     }
 }
 
-// Профиль
-async function loadProfile() {
+function loadProfile() {
     document.getElementById('stat-sent').textContent = '—';
     document.getElementById('stat-likes').textContent = '—';
     document.getElementById('stat-mutual').textContent = '—';
 }
 
-// Админ действия
 async function handleAdminAction(action) {
     const resultDiv = document.getElementById('admin-result');
     
@@ -175,7 +153,24 @@ async function handleAdminAction(action) {
     }
 }
 
-// Обработчики событий
+// Функция для ручной загрузки видео (вызови из консоли)
+window.loadVideosFromJSON = function(jsonData) {
+    try {
+        const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+        state.videos = data.videos || [];
+        state.currentIndex = 0;
+        if (state.videos.length > 0) {
+            playCurrentVideo();
+            tg.showPopup({ message: `✅ Загружено ${state.videos.length} кружков!` });
+        } else {
+            tg.showPopup({ message: '📭 Нет кружков' });
+        }
+    } catch (e) {
+        console.error('Ошибка парсинга:', e);
+        tg.showPopup({ message: '❌ Ошибка данных' });
+    }
+};
+
 document.addEventListener('click', e => {
     if (e.target.dataset.screen) {
         showScreen(e.target.dataset.screen);
@@ -203,5 +198,4 @@ document.addEventListener('click', e => {
     }
 });
 
-// Запуск
 init();

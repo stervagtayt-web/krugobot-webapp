@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>КРУГОБОТ</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Экран загрузки -->
+        <div id="loading-screen" class="screen active">
+            <div class="loader"></div>
+            <p>Загрузка...</p>
+        </div>
+
+        <!-- Главный экран -->
+        <div id="main-screen" class="screen">
+            <div class="header">
+                <h1>🎲 КРУГОБОТ</h1>
+                <p id="user-greeting"></p>
+            </div>
+            <div class="menu-grid">
+                <button class="menu-btn" data-action="watch">▶️ Смотреть кружки</button>
+                <button class="menu-btn" data-action="profile">👤 Мой профиль</button>
+                <button class="menu-btn" data-action="rules">📜 Правила</button>
+                <button class="menu-btn" data-action="support">🆘 Поддержка</button>
+                <button class="menu-btn" data-action="my-videos">🗑 Мои кружки</button>
+                <button class="menu-btn admin-only" data-action="admin">👑 Админ</button>
+            </div>
+        </div>
+
+        <!-- Экран просмотра кружков -->
+        <div id="watch-screen" class="screen">
+            <div class="video-container">
+                <video id="current-video" loop playsinline></video>
+                <div class="video-overlay">
+                    <div class="video-info">
+                        <span id="video-badge"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="video-controls">
+                <button class="control-btn" data-video-action="like">❤️ Лайк</button>
+                <button class="control-btn" data-video-action="reply">💬 Ответить</button>
+                <button class="control-btn" data-video-action="next">⏩ Далее</button>
+                <button class="control-btn" data-video-action="report">🚨 Жалоба</button>
+            </div>
+            <button class="back-btn" data-screen="main">← Назад</button>
+        </div>
+
+        <!-- Экран профиля -->
+        <div id="profile-screen" class="screen">
+            <h2>👤 Профиль</h2>
+            <div id="profile-stats">
+                <p>📹 Отправлено: <span id="stat-sent">0</span></p>
+                <p>❤️ Лайков: <span id="stat-likes">0</span></p>
+                <p>💕 Взаимных: <span id="stat-mutual">0</span></p>
+            </div>
+            <button class="back-btn" data-screen="main">← Назад</button>
+        </div>
+
+        <!-- Экран правил -->
+        <div id="rules-screen" class="screen">
+            <h2>📜 Правила</h2>
+            <div class="rules-text">
+                <p>— Запрещён спам</p>
+                <p>— Запрещён запрещённый контент</p>
+                <p>— Уважайте других</p>
+                <p>— Жалобы → бан</p>
+            </div>
+            <button class="back-btn" data-screen="main">← Назад</button>
+        </div>
+
+        <!-- Экран админа -->
+        <div id="admin-screen" class="screen">
+            <h2>👑 Админ-панель</h2>
+            <div class="admin-actions">
+                <button class="admin-btn" data-admin-action="stats">📊 Статистика</button>
+                <button class="admin-btn" data-admin-action="ban">🚫 Бан</button>
+                <button class="admin-btn" data-admin-action="unban">✅ Разбан</button>
+                <button class="admin-btn" data-admin-action="broadcast">📢 Рассылка</button>
+            </div>
+            <div id="admin-result"></div>
+            <button class="back-btn" data-screen="main">← Назад</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

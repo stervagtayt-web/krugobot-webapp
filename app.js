@@ -10,6 +10,13 @@ const state = {
     currentIndex: 0
 };
 
+// Тестовые видео для демонстрации
+const MOCK_VIDEOS = [
+    { id: 1, url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', isReply: false },
+    { id: 2, url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', isReply: true },
+    { id: 3, url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', isReply: false }
+];
+
 async function init() {
     try {
         const initData = tg.initDataUnsafe || {};
@@ -46,11 +53,25 @@ function showScreen(screenId) {
 
 async function loadVideos() {
     try {
-        tg.showPopup({ message: '📥 Запрос кружков...\nПроверьте чат с ботом!' });
+        // Показываем тестовые видео сразу (чтобы не было пустоты)
+        state.videos = MOCK_VIDEOS;
+        state.currentIndex = 0;
+        
+        if (state.videos.length > 0) {
+            playCurrentVideo();
+            tg.showPopup({ 
+                title: '🎥 Демо-режим', 
+                message: `Загружено ${state.videos.length} тестовых кружков!\n\nНажмите "Обновить" в чате с ботом чтобы загрузить реальные видео.` 
+            });
+        }
+        
+        // Отправляем запрос боту на реальные видео
         tg.sendData(JSON.stringify({ action: 'get_videos' }));
+        
     } catch (e) {
         console.error('Ошибка загрузки:', e);
-        tg.showPopup({ message: '❌ Ошибка загрузки' });
+        state.videos = MOCK_VIDEOS;
+        playCurrentVideo();
     }
 }
 
@@ -153,17 +174,17 @@ async function handleAdminAction(action) {
     }
 }
 
-// Функция для ручной загрузки видео (вызови из консоли)
+// Функция для загрузки видео из JSON (вызови из консоли браузера)
 window.loadVideosFromJSON = function(jsonData) {
     try {
         const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-        state.videos = data.videos || [];
-        state.currentIndex = 0;
-        if (state.videos.length > 0) {
+        if (data.videos && data.videos.length > 0) {
+            state.videos = data.videos;
+            state.currentIndex = 0;
             playCurrentVideo();
-            tg.showPopup({ message: `✅ Загружено ${state.videos.length} кружков!` });
+            tg.showPopup({ message: `✅ Загружено ${state.videos.length} реальных кружков!` });
         } else {
-            tg.showPopup({ message: '📭 Нет кружков' });
+            tg.showPopup({ message: '📭 Нет доступных кружков' });
         }
     } catch (e) {
         console.error('Ошибка парсинга:', e);
